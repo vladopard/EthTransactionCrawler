@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EthCrawlerApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9066c63cf22727c3d6e1a67f13dd67cd1396fb96")]
 [assembly: System.Reflection.AssemblyProductAttribute("EthCrawlerApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EthCrawlerApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

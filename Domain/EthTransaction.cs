@@ -2,6 +2,12 @@
 {
     public class EthTransaction
     {
+        /*To su normalne transakcije koje vidiš kad neko pošalje ETH direktno 
+         * sa jedne adrese na drugu ili ka smart contractu.
+        Informacije koje čuvaš u ovoj klasi: ko šalje (From), ko prima (To), 
+        koliko ETH (Value), u kom bloku i kad, plus tehnički detalji (GasUsed, GasPrice, IsError).
+        Ovo je osnovna „istorija plaćanja“ na Ethereum mreži.*/
+
         public required string Hash { get; set; }
         //Hash – Јединствени идентификатор трансакције (TX hash).
         //Свака трансакција на Ethereum мрежи има свој hash
