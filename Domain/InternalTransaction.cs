@@ -11,7 +11,7 @@
         public required long BlockNumber { get; set; }
         // Број блока у коме је интерна трансакција извршена
 
-        public required DateTime TimestampUtc { get; set; }
+        public required DateTime TimeStampUtc { get; set; }
         // Време у UTC формату када је блок верификован
 
         public required string From { get; set; }

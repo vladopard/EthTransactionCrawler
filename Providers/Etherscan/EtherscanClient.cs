@@ -1,6 +1,7 @@
 ﻿using System.Net.Http.Json;
 using EthCrawlerApi.Options;
 using EthCrawlerApi.Providers.Etherscan.Dto;
+using EthCrawlerApi.Providers.Etherscan.Interfaces;
 using Microsoft.Extensions.Options;
 
 namespace EthCrawlerApi.Providers.Etherscan

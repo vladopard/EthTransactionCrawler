@@ -1,6 +1,8 @@
 using EthCrawlerApi.Infrastructure;
+using EthCrawlerApi.Mapping;
 using EthCrawlerApi.Options;
 using EthCrawlerApi.Providers.Etherscan;
+using EthCrawlerApi.Providers.Etherscan.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -20,6 +22,7 @@ builder.Services.AddOptions<EtherscanOptions>()
     .Validate(o => !string.IsNullOrWhiteSpace(o.ApiKey), "Api key is required!")
     .ValidateOnStart();
 
+builder.Services.AddScoped<IEtherscanPaginator, EtherscanPaginator>();
 builder.Services.AddHttpClient<IEtherscanClient, EtherscanClient>((sp, client) =>
 {
     var opt = sp.GetRequiredService<IOptions<EtherscanOptions>>().Value;
@@ -28,7 +31,7 @@ builder.Services.AddHttpClient<IEtherscanClient, EtherscanClient>((sp, client) =
     client.Timeout = TimeSpan.FromSeconds(opt.TimeoutSeconds);
 });
 
-
+builder.Services.AddAutoMapper(typeof(EtherscanMappingProfile));
 
 var app = builder.Build();
 
