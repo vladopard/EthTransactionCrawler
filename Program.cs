@@ -3,6 +3,7 @@ using EthCrawlerApi.Mapping;
 using EthCrawlerApi.Options;
 using EthCrawlerApi.Providers.Etherscan;
 using EthCrawlerApi.Providers.Etherscan.Interfaces;
+using EthCrawlerApi.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -16,13 +17,19 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<EthCrawlerDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+//This is the advanced/explicit form (the “options builder” API).
 builder.Services.AddOptions<EtherscanOptions>()
     .Bind(builder.Configuration.GetSection(EtherscanOptions.SectionName))
     .ValidateDataAnnotations()
     .Validate(o => !string.IsNullOrWhiteSpace(o.ApiKey), "Api key is required!")
     .ValidateOnStart();
+//It just binds your configuration section ("Crawler") to a POCO (CrawlerOptions).
+builder.Services.Configure<CrawlerOptions>(
+    builder.Configuration.GetSection("Crawler"));
 
 builder.Services.AddScoped<IEtherscanPaginator, EtherscanPaginator>();
+builder.Services.AddScoped<CrawlerService>();
+builder.Services.AddHostedService<CrawlerBackgroundService>();
 builder.Services.AddHttpClient<IEtherscanClient, EtherscanClient>((sp, client) =>
 {
     var opt = sp.GetRequiredService<IOptions<EtherscanOptions>>().Value;
