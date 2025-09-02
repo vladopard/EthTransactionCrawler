@@ -36,7 +36,7 @@
         public required string tokenDecimal { get; set; }
         public required string tokenSymbol { get; set; }
         public required string contractAddress { get; set; }
-        public required string logIndex { get; set; }
+        public string? logIndex { get; init; }
     }
 
 }

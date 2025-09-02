@@ -29,7 +29,7 @@ builder.Services.Configure<CrawlerOptions>(
 
 builder.Services.AddScoped<IEtherscanPaginator, EtherscanPaginator>();
 builder.Services.AddScoped<CrawlerService>();
-builder.Services.AddHostedService<CrawlerBackgroundService>();
+//builder.Services.AddHostedService<CrawlerBackgroundService>();
 builder.Services.AddHttpClient<IEtherscanClient, EtherscanClient>((sp, client) =>
 {
     var opt = sp.GetRequiredService<IOptions<EtherscanOptions>>().Value;

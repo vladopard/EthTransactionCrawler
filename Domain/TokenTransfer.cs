@@ -12,7 +12,7 @@
         public required long BlockNumber { get; set; }
         // Број блока у коме је transfer забележен
 
-        public required DateTime TimestampUtc { get; set; }
+        public required DateTime TimeStampUtc { get; set; }
         // Време у UTC формату када је блок верификован
 
         public required string ContractAddress { get; set; }

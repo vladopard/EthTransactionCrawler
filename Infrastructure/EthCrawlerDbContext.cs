@@ -75,7 +75,7 @@ namespace EthCrawlerApi.Infrastructure
 
                 e.Property(x => x.BlockNumber).IsRequired();
 
-                e.Property(x => x.TimestampUtc).IsRequired();
+                e.Property(x => x.TimeStampUtc).IsRequired();
 
                 e.Property(x => x.From)
                     .IsRequired()
@@ -112,7 +112,7 @@ namespace EthCrawlerApi.Infrastructure
 
                 e.Property(x => x.BlockNumber).IsRequired();
 
-                e.Property(x => x.TimestampUtc).IsRequired();
+                e.Property(x => x.TimeStampUtc).IsRequired();
 
                 e.Property(x => x.ContractAddress)
                     .IsRequired()

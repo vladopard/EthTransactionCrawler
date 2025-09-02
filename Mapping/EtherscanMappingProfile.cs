@@ -33,10 +33,11 @@ namespace EthCrawlerApi.Mapping
             .ForMember(d => d.ValueEth, c => c.ConvertUsing(new WeiToEthConverter(), s => s.value));
             // === TokenDto -> TokenTransfer =======================================
             CreateMap<TokenDto, TokenTransfer>()
-            .ForMember(d => d.UniqueId, c => c.MapFrom(s => $"{s.hash}:{s.logIndex}"))
+             .ForMember(d => d.UniqueId,
+             c => c.MapFrom(s => $"{s.hash}:{(string.IsNullOrEmpty(s.logIndex) ? "0" : s.logIndex)}"))
             .ForMember(d => d.TxHash, c => c.MapFrom(s => s.hash))
             .ForMember(d => d.BlockNumber, c => c.MapFrom(s => ParseLong(s.blockNumber)))
-            .ForMember(d => d.TimestampUtc, c => c.ConvertUsing(new UnixToUtcConverter(), s => s.timeStamp))
+            .ForMember(d => d.TimeStampUtc, c => c.ConvertUsing(new UnixToUtcConverter(), s => s.timeStamp))
             .ForMember(d => d.ContractAddress, c => c.MapFrom(s => s.contractAddress))
             .ForMember(d => d.TokenSymbol, c => c.MapFrom(s => s.tokenSymbol))
             .ForMember(d => d.TokenDecimals, c => c.MapFrom(s => ParseInt(s.tokenDecimal)))

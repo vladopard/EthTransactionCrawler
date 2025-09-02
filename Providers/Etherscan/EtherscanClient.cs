@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using System.Text.Json;
 using EthCrawlerApi.Options;
 using EthCrawlerApi.Providers.Etherscan.Dto;
 using EthCrawlerApi.Providers.Etherscan.Interfaces;
@@ -30,57 +31,66 @@ namespace EthCrawlerApi.Providers.Etherscan
             FetchPageAsync<TokenDto>("tokentx", address, startBlock, page, pageSize);
 
         // ----------------- Helper -----------------
-        private async Task<EtherscanResponse<List<T>>> FetchPageAsync<T>(
-            string action, string address, long startBlock, int page, int pageSize)
+        private static readonly JsonSerializerOptions _jsonOpts = new()
         {
-            /* client.BaseAddress = new Uri(opt.BaseUrl);
-             * Значи сваки позив ка _http.GetAsync(url) почиње од "https://api.etherscan.io/api".
-             * Зато овде састављаш само query string (оно што иде после ?).
-             */
-            var url = $"?module=account&action={action}" +
-                      $"&address={address}" +
-                      $"&startblock={startBlock}" +
-                      $"&endblock=99999999" +
-                      $"&page={page}" +
-                      $"&offset={pageSize}" +
-                      $"&sort=asc" +
-                      $"&apikey={_opt.ApiKey}";
+            PropertyNameCaseInsensitive = true
+        };
 
-            /* Чим стигну HTTP хедери од сервера (status code, content-length, итд.),
-             * HttpClient ти одмах враћа HttpResponseMessage.
-             * Тело (body) у том тренутку још није скинуто,
-             * већ можеш сам да га читаш као stream 
-             * (нпр. await response.Content.ReadAsStreamAsync()).
-             */
+        private async Task<EtherscanResponse<List<T>>> FetchPageAsync<T>(
+    string action, string address, long startBlock, int page, int pageSize)
+        {
+            var url = $"?module=account&action={action}"
+                    + $"&address={address}"
+                    + $"&startblock={startBlock}"
+                    + $"&endblock=99999999"
+                    + $"&page={page}"
+                    + $"&offset={pageSize}"
+                    + $"&sort=asc"
+                    + $"&apikey={_opt.ApiKey}";
+
             var resp = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-
-            // баца HttpRequestException ако није добар статус код (нпр. 404, 500...)
             resp.EnsureSuccessStatusCode();
 
-            //EtherscanResponse<List<T>>?
-            var dto = await resp.Content.ReadFromJsonAsync<EtherscanResponse<List<T>>>();
-            if (dto is null)
+            // 1) prvo čitaj wrapper sa result kao JsonElement
+            var raw = await resp.Content.ReadFromJsonAsync<EtherscanResponse<JsonElement>>(_jsonOpts);
+            if (raw is null)
                 throw new InvalidOperationException("Etherscan: empty/invalid JSON response.");
 
-            // status 0 може да буде грешка или само нема података
-            // Etherscan конвенција: status "0" + message "No transactions found" није грешка
-            // то само значи да за дату адресу у том опсегу блокова нема трансакција.
-            if (dto.status == "0" &&
-                dto.message?.IndexOf("No transactions", StringComparison.OrdinalIgnoreCase) >= 0)
+            // 2) “nema podataka” slučaj (status=0 i poruka kaže No transactions)
+            if (raw.status == "0" &&
+                raw.message?.IndexOf("No transactions", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 return new EtherscanResponse<List<T>>
                 {
                     status = "0",
-                    message = dto.message,
+                    message = raw.message,
                     result = new List<T>()
                 };
             }
 
-            // Све остало са status != "1" третирамо као грешку Etherscan-а
-            if (dto.status != "1")
-                throw new InvalidOperationException($"Etherscan error: {dto.message}");
+            // 3) uspeh (status=1) – očekujemo da je result niz
+            if (raw.status == "1")
+            {
+                if (raw.result.ValueKind == JsonValueKind.Array)
+                {
+                    var list = JsonSerializer.Deserialize<List<T>>(raw.result.GetRawText(), _jsonOpts) ?? new List<T>();
+                    return new EtherscanResponse<List<T>>
+                    {
+                        status = "1",
+                        message = raw.message!,
+                        result = list
+                    };
+                }
 
-            return dto;
+                // neočekivan format (status=1 ali result nije niz)
+                throw new InvalidOperationException("Etherscan: unexpected result format (not an array).");
+            }
+
+            // 4) ostale greške (rate limit, invalid key, NOTOK...)
+            // često je raw.result string sa porukom
+            var details = raw.result.ValueKind == JsonValueKind.String ? raw.result.GetString() : null;
+            var msg = string.IsNullOrWhiteSpace(details) ? raw.message : $"{raw.message}: {details}";
+            throw new InvalidOperationException($"Etherscan error: {msg}");
         }
     }
 }

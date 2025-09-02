@@ -9,6 +9,7 @@ using EFCore.BulkExtensions;
 
 namespace EthCrawlerApi.Services
 {
+
     public class CrawlerService
     {
         private readonly IEtherscanPaginator _paginator;
@@ -19,11 +20,11 @@ namespace EthCrawlerApi.Services
         private readonly long _defaultStartBlock;
 
         public CrawlerService(
-           IEtherscanPaginator paginator,
-           EthCrawlerDbContext db,
-           IMapper mapper,
-           ILogger<CrawlerService> logger,
-           IOptions<EtherscanOptions> etherscanOptions
+            IEtherscanPaginator paginator,
+            EthCrawlerDbContext db,
+            IMapper mapper,
+            ILogger<CrawlerService> logger,
+            IOptions<EtherscanOptions> etherscanOptions
         )
         {
             _paginator = paginator;
@@ -34,84 +35,117 @@ namespace EthCrawlerApi.Services
             _defaultStartBlock = etherscanOptions.Value.DefaultStartBlock;
         }
 
-        public async Task CrawlAddressAsync(string address)
+        public async Task CrawlAddressAsync(string address, CrawlTypes types = CrawlTypes.All)
         {
-            //Нормализација адресе
             var addr = NormalizeAddress(address);
 
-            var lastKnown = await GetLastKnownBlockForAddressAsync(addr);
-            var startBlock = Math.Max(lastKnown + 1, _defaultStartBlock);
+            // per-type start blokovi
+            long startTx = _defaultStartBlock, startInt = _defaultStartBlock, startTok = _defaultStartBlock;
 
-            _logger.LogInformation("Crawling {Address} from block {StartBlock}", addr, startBlock);
-
-            var txTask = _paginator.GetAllTransactionsAsync(addr, startBlock, _pageSize);
-            var internalTask = _paginator.GetAllInternalTransactionsAsync(addr, startBlock, _pageSize);
-            var tokenTask = _paginator.GetAllTokenTransfersAsync(addr, startBlock, _pageSize);
-            await Task.WhenAll(txTask, internalTask, tokenTask);
-
-            var txDtos = await txTask;
-            var internalDtos = await internalTask;
-            var tokenDtos = await tokenTask;
-
-            if (txDtos.Count == 0 && internalDtos.Count == 0 && tokenDtos.Count == 0)
+            if (types.HasFlag(CrawlTypes.Transactions))
             {
-                _logger.LogInformation("No new data for {Address}", addr);
+                var lastTx = await GetLastKnownBlockForTransactionsAsync(addr);
+                startTx = Math.Max(lastTx + 1, _defaultStartBlock);
+                _logger.LogInformation("Crawling TX for {Address} from {Start}", addr, startTx);
+            }
+
+            if (types.HasFlag(CrawlTypes.Internal))
+            {
+                var lastInt = await GetLastKnownBlockForInternalAsync(addr);
+                startInt = Math.Max(lastInt + 1, _defaultStartBlock);
+                _logger.LogInformation("Crawling INTERNAL for {Address} from {Start}", addr, startInt);
+            }
+
+            if (types.HasFlag(CrawlTypes.TokenTransfers))
+            {
+                var lastTok = await GetLastKnownBlockForTokensAsync(addr);
+                startTok = Math.Max(lastTok + 1, _defaultStartBlock);
+                _logger.LogInformation("Crawling TOKENS for {Address} from {Start}", addr, startTok);
+            }
+
+            var txEntities = new List<EthTransaction>();
+            var internalEntities = new List<InternalTransaction>();
+            var tokenEntities = new List<TokenTransfer>();
+
+            if (types.HasFlag(CrawlTypes.Transactions))
+            {
+                var txDtos = await _paginator.GetAllTransactionsAsync(addr, startTx, _pageSize);
+                txEntities = _mapper.Map<List<EthTransaction>>(txDtos);
+                Normalize(txEntities);
+                txEntities = txEntities.DistinctBy(e => e.Hash).ToList();
+            }
+
+            if (types.HasFlag(CrawlTypes.Internal))
+            {
+                if (txEntities.Count > 0) await Task.Delay(1200); // throttle između različitih tipova
+                var internalDtos = await _paginator.GetAllInternalTransactionsAsync(addr, startInt, _pageSize);
+                internalEntities = _mapper.Map<List<InternalTransaction>>(internalDtos);
+                Normalize(internalEntities);
+                internalEntities = internalEntities.DistinctBy(e => e.UniqueId).ToList();
+            }
+
+            if (types.HasFlag(CrawlTypes.TokenTransfers))
+            {
+                if (txEntities.Count > 0 || internalEntities.Count > 0) await Task.Delay(1200);
+                var tokenDtos = await _paginator.GetAllTokenTransfersAsync(addr, startTok, _pageSize);
+                tokenEntities = _mapper.Map<List<TokenTransfer>>(tokenDtos);
+                Normalize(tokenEntities);
+                tokenEntities = tokenEntities.DistinctBy(e => e.UniqueId).ToList();
+            }
+
+            if (txEntities.Count == 0 && internalEntities.Count == 0 && tokenEntities.Count == 0)
+            {
+                _logger.LogInformation("Nothing to save for {Address}", addr);
                 return;
             }
 
-            // mapiranje
-            var txEntities = _mapper.Map<List<EthTransaction>>(txDtos);
-            var internalEntities = _mapper.Map<List<InternalTransaction>>(internalDtos);
-            var tokenEntities = _mapper.Map<List<TokenTransfer>>(tokenDtos);
-
-            // normalizuj adrese (lower), null-safe za To
-            Normalize(txEntities);
-            Normalize(internalEntities);
-            Normalize(tokenEntities);
-
-            // dedup (za slučaj overlap-a stranica ili retry)
-            txEntities = txEntities.DistinctBy(e => e.Hash).ToList();
-            internalEntities = internalEntities.DistinctBy(e => e.UniqueId).ToList();
-            tokenEntities = tokenEntities.DistinctBy(e => e.UniqueId).ToList();
-
-            // bulk upsert – obavezno setuj ključ po kom se updejtuje
             var txCfg = new BulkConfig { UpdateByProperties = new List<string> { "Hash" }, BatchSize = 10_000 };
             var inCfg = new BulkConfig { UpdateByProperties = new List<string> { "UniqueId" }, BatchSize = 10_000 };
             var tkCfg = new BulkConfig { UpdateByProperties = new List<string> { "UniqueId" }, BatchSize = 10_000 };
 
             using var dbTx = await _db.Database.BeginTransactionAsync();
-            await _db.BulkInsertOrUpdateAsync(txEntities, txCfg);
-            await _db.BulkInsertOrUpdateAsync(internalEntities, inCfg);
-            await _db.BulkInsertOrUpdateAsync(tokenEntities, tkCfg);
+
+            if (txEntities.Count > 0)
+                await _db.BulkInsertOrUpdateAsync(txEntities, txCfg);
+
+            if (internalEntities.Count > 0)
+                await _db.BulkInsertOrUpdateAsync(internalEntities, inCfg);
+
+            if (tokenEntities.Count > 0)
+                await _db.BulkInsertOrUpdateAsync(tokenEntities, tkCfg);
+
             await dbTx.CommitAsync();
 
-            _logger.LogInformation("Saved {Tx} tx, {Int} internal, {Tok} token transfers for {Address}",
+            _logger.LogInformation(
+                "Saved {Tx} tx, {Int} internal, {Tok} token transfers for {Address}",
                 txEntities.Count, internalEntities.Count, tokenEntities.Count, addr);
-
         }
 
         private static string NormalizeAddress(string? s)
             => s?.Trim().ToLowerInvariant() ?? string.Empty;
 
-
-        private async Task<long> GetLastKnownBlockForAddressAsync(string addressLower)
+        private async Task<long> GetLastKnownBlockForTransactionsAsync(string addressLower)
         {
-            var maxTx = await _db.EthTransactions.AsNoTracking()
-            .Where(t => t.From == addressLower || (t.To != null && t.To == addressLower))
-            .MaxAsync(t => (long?)t.BlockNumber) ?? 0;
-
-            var maxInt = await _db.InternalTransactions.AsNoTracking()
+            return await _db.EthTransactions.AsNoTracking()
                 .Where(t => t.From == addressLower || (t.To != null && t.To == addressLower))
                 .MaxAsync(t => (long?)t.BlockNumber) ?? 0;
+        }
 
-            var maxTok = await _db.TokenTransfers.AsNoTracking()
+        private async Task<long> GetLastKnownBlockForInternalAsync(string addressLower)
+        {
+            return await _db.InternalTransactions.AsNoTracking()
+                .Where(t => t.From == addressLower || (t.To != null && t.To == addressLower))
+                .MaxAsync(t => (long?)t.BlockNumber) ?? 0;
+        }
+
+        private async Task<long> GetLastKnownBlockForTokensAsync(string addressLower)
+        {
+            return await _db.TokenTransfers.AsNoTracking()
                 .Where(t => t.From == addressLower || t.To == addressLower)
                 .MaxAsync(t => (long?)t.BlockNumber) ?? 0;
-
-            return Math.Max(maxTx, Math.Max(maxInt, maxTok));
         }
-        //ова метода се позове пре него што снимаш у базу,
-        //и све адресе у листи трансакција се доведу у "стандардни" формат.
+
+        // нормализација ентитета
         private static void Normalize(List<EthTransaction> list)
         {
             foreach (var e in list)
@@ -139,6 +173,5 @@ namespace EthCrawlerApi.Services
                 e.ContractAddress = NormalizeAddress(e.ContractAddress);
             }
         }
-
     }
 }
