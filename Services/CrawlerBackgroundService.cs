@@ -39,7 +39,7 @@ namespace EthCrawlerApi.Services
                         var crawler = scope.ServiceProvider.GetRequiredService<CrawlerService>();
 
                         // Bez prosleđivanja CT-a (namerno)
-                        await crawler.CrawlAddressAsync(raw);
+                        //await crawler.CrawlAddressAsync(raw);
                     }
                     catch (OperationCanceledException)
                     {

@@ -3,6 +3,7 @@ using EthCrawlerApi.Mapping;
 using EthCrawlerApi.Options;
 using EthCrawlerApi.Providers.Etherscan;
 using EthCrawlerApi.Providers.Etherscan.Interfaces;
+using EthCrawlerApi.Repositories;
 using EthCrawlerApi.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -27,6 +28,7 @@ builder.Services.AddOptions<EtherscanOptions>()
 builder.Services.Configure<CrawlerOptions>(
     builder.Configuration.GetSection("Crawler"));
 
+builder.Services.AddScoped<IEthRepository, EthRepository>();
 builder.Services.AddScoped<IEtherscanPaginator, EtherscanPaginator>();
 builder.Services.AddScoped<CrawlerService>();
 //builder.Services.AddHostedService<CrawlerBackgroundService>();

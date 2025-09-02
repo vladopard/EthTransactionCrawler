@@ -12,6 +12,9 @@ namespace EthCrawlerApi.Providers.Etherscan.Interfaces
         //После сваког позива чека кратко(DelayMsBetweenPages) да не би ударио у rate limit.
         //Стаје када: врати мање резултата од PageSize(значи крај), или
         //врати "No transactions found".
+        Task<IReadOnlyList<TxDto>> GetTransactionsPageAsync(string address, long startBlock, int page, int pageSize);
+        Task<IReadOnlyList<InternalDto>> GetInternalPageAsync(string address, long startBlock, int page, int pageSize);
+        Task<IReadOnlyList<TokenDto>> GetTokenTransfersPageAsync(string address, long startBlock, int page, int pageSize);
 
         Task<IReadOnlyList<TxDto>> GetAllTransactionsAsync(string address, long startBlock, int pageSize);
         Task<IReadOnlyList<InternalDto>> GetAllInternalTransactionsAsync(string address, long startBlock, int pageSize);
