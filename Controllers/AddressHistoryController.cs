@@ -21,7 +21,7 @@ public class AddressHistoryController : ControllerBase
         long? fromBlock,
         int page = 1,
         int pageSize = 50,
-        bool persist = false)
+        bool persist = true)
     {
         var result = await _service.GetTransactionsJitAsync(address, fromBlock, page, pageSize, persist);
         return Ok(result);
@@ -33,7 +33,7 @@ public class AddressHistoryController : ControllerBase
         long? fromBlock,
         int page = 1,
         int pageSize = 50,
-        bool persist = false)
+        bool persist = true)
     {
         var result = await _service.GetInternalJitAsync(address, fromBlock, page, pageSize, persist);
         return Ok(result);
@@ -45,7 +45,7 @@ public class AddressHistoryController : ControllerBase
         long? fromBlock,
         int page = 1,
         int pageSize = 50,
-        bool persist = false)
+        bool persist = true)
     {
         var result = await _service.GetTokensJitAsync(address, fromBlock, page, pageSize, persist);
         return Ok(result);

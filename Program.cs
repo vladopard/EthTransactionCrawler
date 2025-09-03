@@ -18,6 +18,15 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<EthCrawlerDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend",
+        policy => policy
+            .WithOrigins("http://localhost:5173") // Vite dev server
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
 //This is the advanced/explicit form (the “options builder” API).
 builder.Services.AddOptions<EtherscanOptions>()
     .Bind(builder.Configuration.GetSection(EtherscanOptions.SectionName))
@@ -52,6 +61,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowFrontend");
 
 app.UseAuthorization();
 

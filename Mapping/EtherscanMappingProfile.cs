@@ -1,8 +1,10 @@
 ﻿using System.Globalization;
 using System.Numerics;
+using System.Text;
 using AutoMapper;
 using EthCrawlerApi.Domain;
 using EthCrawlerApi.Providers.Etherscan.Dto;
+using System.Security.Cryptography;
 
 namespace EthCrawlerApi.Mapping
 {
@@ -33,8 +35,7 @@ namespace EthCrawlerApi.Mapping
             .ForMember(d => d.ValueEth, c => c.ConvertUsing(new WeiToEthConverter(), s => s.value));
             // === TokenDto -> TokenTransfer =======================================
             CreateMap<TokenDto, TokenTransfer>()
-             .ForMember(d => d.UniqueId,
-             c => c.MapFrom(s => $"{s.hash}:{(string.IsNullOrEmpty(s.logIndex) ? "0" : s.logIndex)}"))
+            .ForMember(d => d.UniqueId, c => c.MapFrom<TokenUniqueIdResolver>())
             .ForMember(d => d.TxHash, c => c.MapFrom(s => s.hash))
             .ForMember(d => d.BlockNumber, c => c.MapFrom(s => ParseLong(s.blockNumber)))
             .ForMember(d => d.TimeStampUtc, c => c.ConvertUsing(new UnixToUtcConverter(), s => s.timeStamp))
@@ -136,4 +137,30 @@ namespace EthCrawlerApi.Mapping
         }
 
     }
+
+
+    public class TokenUniqueIdResolver : IValueResolver<TokenDto, TokenTransfer, string>
+    {
+        public string Resolve(TokenDto src, TokenTransfer dest, string destMember, ResolutionContext context)
+        {
+            // 1) Ako postoji logIndex, to je prirodni ključ
+            if (!string.IsNullOrWhiteSpace(src.logIndex))
+                return $"{src.hash}:{src.logIndex}";
+
+            // 2) Fallback: stabilni kompozit bez tokenSymbol-a
+            var contract = (src.contractAddress ?? "").ToLowerInvariant();
+            var from = (src.from ?? "").ToLowerInvariant();
+            var to = (src.to ?? "").ToLowerInvariant();
+            var amtRaw = !string.IsNullOrWhiteSpace(src.value) ? src.value! : "0"; // raw wei string
+
+            var key = $"{src.hash}|{contract}|{from}|{to}|{amtRaw}";
+
+            using var sha256 = SHA256.Create();
+            var digest = Convert.ToHexString(sha256.ComputeHash(Encoding.UTF8.GetBytes(key))).ToLowerInvariant();
+
+            // skraćen, čitljiv ID
+            return $"{src.hash}:{digest[..16]}";
+        }
+    }
 }
+

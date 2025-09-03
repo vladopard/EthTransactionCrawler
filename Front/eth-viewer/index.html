@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + TS</title>
+  </head>
+  <body>
+    <h1>ETH Viewer</h1>
+
+    <!-- Forma: unos adrese i startnog bloka -->
+    <form id="query-form">
+      <input id="address" placeholder="0x..." required />
+      <input id="startBlock" type="number" placeholder="Start block" />
+      <button type="submit">Load</button>
+    </form>
+
+    <!-- Tab dugmad (type="button" da ne trigguju submit) -->
+    <nav class="tabs">
+      <button type="button" data-tab="external" class="active">External</button>
+      <button type="button" data-tab="internal">Internal</button>
+      <button type="button" data-tab="tokens">Tokens</button>
+    </nav>
+
+    <!-- EXTERNAL TRANSACTIONS -->
+    <section id="tab-external" class="tab active">
+      <div class="table-scroll">
+        <table id="tx-table" class="full">
+          <thead>
+            <tr>
+              <th>Time (UTC)</th>
+              <th>Block</th>
+              <th>Hash</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Dir</th>
+              <th>Value (ETH)</th>
+              <th>Gas Used</th>
+              <th>Gas Price (Gwei)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button id="load-more-external" type="button">Show more</button>
+    </section>
+
+    <!-- INTERNAL TRANSACTIONS -->
+    <section id="tab-internal" class="tab">
+      <div class="table-scroll">
+        <table id="internal-table" class="full">
+          <thead>
+            <tr>
+              <th>Time (UTC)</th>
+              <th>Block</th>
+              <th>UniqueId</th>
+              <th>Parent Hash</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Dir</th>
+              <th>Value (ETH)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button id="load-more-internal" type="button">Show more</button>
+    </section>
+
+    <!-- TOKEN TRANSFERS -->
+    <section id="tab-tokens" class="tab">
+      <div class="table-scroll">
+        <table id="tokens-table" class="full">
+          <thead>
+            <tr>
+              <th>Time (UTC)</th>
+              <th>Block</th>
+              <th>UniqueId</th>
+              <th>Tx Hash</th>
+              <th>Contract</th>
+              <th>Symbol</th>
+              <th>Decimals</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Dir</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button id="load-more-tokens" type="button">Show more</button>
+    </section>
+
+    <!-- Tvoj Vite entry -->
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+
+
+</html>
