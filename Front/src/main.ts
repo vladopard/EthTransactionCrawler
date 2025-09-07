@@ -1,6 +1,6 @@
 import './style.css';
 
-const API = (import.meta as any).env?.VITE_API_BASE ?? 'https://localhost:7237';
+const API = (import.meta as any).env?.VITE_API_BASE ?? 'http://localhost:8080';
 
 const form = document.getElementById('query-form') as HTMLFormElement;
 const addressInput = document.getElementById('address') as HTMLInputElement;

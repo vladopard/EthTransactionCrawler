@@ -22,7 +22,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy => policy
-            .WithOrigins("http://localhost:5173") // Vite dev server
+            .WithOrigins("http://localhost:3000") // Vite dev server
             .AllowAnyHeader()
             .AllowAnyMethod());
 });

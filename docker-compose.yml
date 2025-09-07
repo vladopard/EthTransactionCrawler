@@ -1,0 +1,46 @@
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Docker"
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=ethcrawler;Username=eth;Password=eth"
+      EtherscanOptions__ApiKey: "78UDWTZ8R8W8DNKTYP6J6CRAFFX6UVATV8"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ethcrawler
+      POSTGRES_USER: eth
+      POSTGRES_PASSWORD: eth
+    ports:
+      - "5432:5432"  
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eth -d ethcrawler"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  frontend:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+
+  
+
+volumes:
+  pgdata:
